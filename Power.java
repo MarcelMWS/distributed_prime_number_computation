@@ -1,3 +1,6 @@
+// Author: Kenneth Chaney
+// Acts as a multi-threaded recursive solution to take the power of a BigInteger.
+
 import java.math.BigInteger;
 import  java.util.concurrent.*;
 import java.util.concurrent.Executors;
@@ -21,18 +24,18 @@ public Power(BigInteger a, BigInteger b)//base, exponent
 public BigInteger call() throws InterruptedException, ExecutionException
 {
 	BigInteger a;
-	if(m.equals(BigInteger.ZERO)==true)
+	if(m.equals(BigInteger.ZERO)==true)//if we reach a point where the exponent is 0 x^0=1
 	{
 		return BigInteger.ONE;
 	}
-	else if(m.testBit(0)==false)
+	else if(m.testBit(0)==false) // taking advantage of the fact that x^2b= x^b * x^b
 	{
 		Callable<BigInteger> p = new Power(n,m.shiftRight(1));
 		Future<BigInteger> f = es.submit(p);
 		a=f.get();
 		return a.multiply(a);
 	}
-	else
+	else // multiplies by the base
 	{
 		Callable<BigInteger> p = new Power(n,m.subtract(BigInteger.ONE));
 		Future<BigInteger> f = es.submit(p);
