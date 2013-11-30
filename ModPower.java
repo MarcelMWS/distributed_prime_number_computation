@@ -8,14 +8,13 @@ import java.util.concurrent.Executors;
 public class ModPower implements Callable<BigInteger>
 {
 
-
 // this class satisfies n^m these are read only variables except when the object is made
 private BigInteger a;// base
 private BigInteger b;// exponent
 private BigInteger m;// what we will mod by
 private BigInteger c;
 
-private static ExecutorService es  = Executors.newCachedThreadPool();
+private static ExecutorService es;
 
 public ModPower(BigInteger a, BigInteger b, BigInteger m)//base, exponent, mod by
 {
@@ -28,10 +27,10 @@ public ModPower(BigInteger a, BigInteger b, BigInteger m, BigInteger c) //base,e
 	this.m = m;
 	this.c = c;
 }
-public ModPower(BigInteger a, BigInteger b)
+
+public static void setES(ExecutorService newES)
 {
-	this.a=a;
-	this.b=b;
+	es = newES;
 }
 
 public BigInteger call() throws InterruptedException, ExecutionException
@@ -66,6 +65,7 @@ public BigInteger call() throws InterruptedException, ExecutionException
 		BigInteger qwer = new BigInteger(args[0]);
 		BigInteger rewq = new BigInteger(args[1]);
 		BigInteger asdf = new BigInteger(args[2]);
+		ModPower.setES(Executors.newCachedThreadPool());
 		Callable<BigInteger> p = new ModPower(qwer,rewq,asdf);
 		Future<BigInteger> f = es.submit(p);
 		System.out.println(f.get());
