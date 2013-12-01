@@ -72,6 +72,14 @@ public class Miller implements Callable<Void>// the return will never be read by
 		}
 		return prime;
 	}
+	public static void waitTillDone()
+	{
+		boolean wait=true;
+		while(wait){
+			wait=!isDone();
+		}
+		return;
+	}
 	public static boolean isDone()
 	{
 		boolean done = true;
@@ -203,6 +211,7 @@ public class Miller implements Callable<Void>// the return will never be read by
 //this is a test that runs through 100 times for a given prime number--100 times gives a decent certainty as to if a number is prime of not
 	public static void main(String[] args) throws ExecutionException, InterruptedException
 	{
+		// demo of how to calculate multiple Miller-Rabin checks on one machine
 		BigInteger n1 = new BigInteger(args[0]);//prime check
 		BigInteger n2 = new BigInteger(args[1]);//number of trials
 		Miller.setES(Executors.newCachedThreadPool());
@@ -211,10 +220,7 @@ public class Miller implements Callable<Void>// the return will never be read by
 			Callable<Void> m1 = new Miller(n1);
 			Future<Void> f = es.submit(m1);
 		}
-		boolean wait=true;
-		while(wait){
-			wait=!isDone();
-		}
+		waitTillDone();
 		System.out.println("is prime: " + isPrime());
 	}
 
