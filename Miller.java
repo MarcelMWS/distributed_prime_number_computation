@@ -14,12 +14,11 @@ public class Miller implements Callable<Void>// the return will never be read by
 	private BigInteger n;
 	private static Lock nlock = new ReentrantLock();//lock for reading the number into a temp variable--BigInteger doesn't say if it's a volatile read
 	private BigInteger check;
+	private static boolean readyToBeChanged=true;
 
 	//this chunk is used to compile data for each test into one conclusive set of data
-	private static int nextSpotInArray=0;
-	private int thisSpotInArray;
-	private static List<Boolean> primeArray=new ArrayList<Boolean>();
-	private static List<Boolean> threadDone=new ArrayList<Boolean>();
+	private boolean prime=false;
+	private boolean done=false;
 	private static Lock palock = new ReentrantLock();//lock for writing to the primeArray
 
 	//this chunk is used for all the tests--generic services
@@ -37,58 +36,51 @@ public class Miller implements Callable<Void>// the return will never be read by
 	//	System.out.println("n: " + n + " n.bitLength(): " + n.bitLength());
                 newCheck();
 	//	System.out.println("check: " + check);
-		thisSpotInArray=nextSpotInArray;
-		nextSpotInArray++;
-		primeArray.add(new Boolean(false));
-		threadDone.add(new Boolean(false));
 	}
-	
+	// Allows the user to set what ExecutorService is being used. Different applications require different needs.
 	public static void setES(ExecutorService newES)
 	{
 		es=newES;
 	}
-
+	// Changes the number being checked--should only be used after isDone has been checked
 	public void setNum(BigInteger q)
 	{
-		n=q;
+		if(readyToBeChanged)
+		{
+			n=q;
+		}
 	}
 	
 	public void newCheck()
 	{
-                check = new BigInteger(n.bitLength()-1,r);
+                check = new BigInteger(Math.min(n.bitLength()-1,20),10,r);
 		if(check.compareTo(new BigInteger("2"))<=0)
 		{
 			check = new BigInteger("3");
 		}
 	}	
 
-	public static boolean isPrime()
+	public boolean isPrime()
 	{
-		boolean prime = true;
-		for ( int i = 0; i < primeArray.size(); i++)
-		{
-	//		System.out.println(primeArray.get(i).booleanValue());
-			prime = (prime && primeArray.get(i).booleanValue());
-		}
 		return prime;
 	}
-	public static void waitTillDone()
+	
+	public boolean isDone()
 	{
-		boolean wait=true;
-		while(wait){
-			wait=!isDone();
-		}
-		return;
-	}
-	public static boolean isDone()
-	{
-		boolean done = true;
-		for ( int i = 0 ; i < threadDone.size() ; i++)
-		{
-			done = (done && threadDone.get(i).booleanValue());
-		}
 		return done;
 	}
+
+	public void waitTillDone()
+	{
+		while(!isDone()){
+		try{
+		Thread.sleep(100);}
+		catch (InterruptedException e){System.out.println(e);}		}
+		readyToBeChanged=true;
+		return;
+
+	}
+
 	public Void call() throws ExecutionException, InterruptedException //the callable will run in the background with multiple going at once. You have the option to get the value but that isn't cared about so a null void is sent back. << never going to be read
 	{
 		BigInteger num; // real number to be kept till end
@@ -96,6 +88,7 @@ public class Miller implements Callable<Void>// the return will never be read by
 		nlock.lock();
 		try
 		{
+			readyToBeChanged=false;
 			num = n; // real number
 			pMinus1 = n; // dummy number
 		}
@@ -118,18 +111,8 @@ public class Miller implements Callable<Void>// the return will never be read by
 	//	System.out.println("z=="+z);
 		if(z.equals(BigInteger.ONE)||z.equals(q))
 		{
-			palock.lock();
-	//		System.out.println("PA Lock");
-			try
-			{
-				primeArray.set(thisSpotInArray, new Boolean(true));
-				threadDone.set(thisSpotInArray,new Boolean(true));
-			}
-			finally
-			{
-				palock.unlock();
-	//			System.out.println("PA Unlock");
-			}
+				prime = true;
+				done = true;
 			return null;
 		}
 	
@@ -140,17 +123,8 @@ public class Miller implements Callable<Void>// the return will never be read by
 	//		System.out.println("i: "+i + "  z: " + z);
 			if(z.equals(BigInteger.ONE))
 			{
-				palock.lock();
-				try
-				{
-	//				System.out.println("z equaled one");
-					primeArray.set(thisSpotInArray, new Boolean(false));
-					threadDone.set(thisSpotInArray,new Boolean(true));
-				}
-				finally
-				{
-					palock.unlock();
-				}
+					prime = false;
+					done = true;
 				return null;
 			}
 			i++;
@@ -177,51 +151,28 @@ public class Miller implements Callable<Void>// the return will never be read by
 	//	System.out.println("Out of for loop");
 		if(i==a&&!z.equals(pMinus1))
 		{
-			palock.lock();
-	//		System.out.println("Lock for i==a and z!=pMinus1");
-			try
-			{
-	//			System.out.println( "i=="+i+ " : z==" + z);
-				primeArray.set(thisSpotInArray,new Boolean(false));
-				threadDone.set(thisSpotInArray,new Boolean(true));
-			}
-			finally
-			{
-				palock.unlock();
-			}
-			return null;
+				prime = false;
+				done = true;
+				return null;
 		}
 		else
 		{
-			palock.lock();
-	//		System.out.println("Lock for else");
-			try
-			{
-				primeArray.set(thisSpotInArray,new Boolean(true));
-				threadDone.set(thisSpotInArray,new Boolean(true));
-			}
-			finally
-			{
-				palock.unlock();
-	//			System.out.println("Unlocked from else");
-			}
+				prime = true;
+				done = true;
 			return null;
 		}
-	}
-//this is a test that runs through 100 times for a given prime number--100 times gives a decent certainty as to if a number is prime of not
+}
+
+	//sample calculations provided in readme
+	//there will also be a test case in the .sh file for Linux
 	public static void main(String[] args) throws ExecutionException, InterruptedException
 	{
-		// demo of how to calculate multiple Miller-Rabin checks on one machine
+		// demo of how to calculate Miller-Rabin checks on one machine
 		BigInteger n1 = new BigInteger(args[0]);//prime check
-		BigInteger n2 = new BigInteger(args[1]);//number of trials
 		Miller.setES(Executors.newCachedThreadPool());
-		for ( int i = 0 ; i < n2.intValue() ; i++)
-		{
-			Callable<Void> m1 = new Miller(n1);
-			Future<Void> f = es.submit(m1);
-		}
-		waitTillDone();
-		System.out.println("is prime: " + isPrime());
+		Callable<Void> m1 = new Miller(n1);
+		Future<Void> f = es.submit(m1);
+		((Miller) m1).waitTillDone();
+		System.out.println("is prime: " + ((Miller) m1).isPrime());
 	}
-
 }

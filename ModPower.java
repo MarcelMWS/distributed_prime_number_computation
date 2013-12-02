@@ -8,65 +8,62 @@ import java.util.concurrent.Executors;
 public class ModPower implements Callable<BigInteger>
 {
 
-// this class satisfies n^m these are read only variables except when the object is made
-private BigInteger a;// base
-private BigInteger b;// exponent
-private BigInteger m;// what we will mod by
-private BigInteger c;
+	// this class satisfies n^m these are read only variables except when the object is made
+	private BigInteger a;// base
+	private BigInteger b;// exponent
+	private BigInteger m;// what we will mod by
+	private BigInteger c;
 
-private static ExecutorService es;
-
-public ModPower(BigInteger a, BigInteger b, BigInteger m)//base, exponent, mod by
-{
-	this(a,b,m,BigInteger.ONE);
-}
-public ModPower(BigInteger a, BigInteger b, BigInteger m, BigInteger c) //base,exponent,modby,dummy set to one to when starting
-{
-	this.a = a;
-	this.b = b;
-	this.m = m;
-	this.c = c;
-}
-
-public static void setES(ExecutorService newES)
-{
-	es = newES;
-}
-
-public BigInteger call() throws InterruptedException, ExecutionException
-{
-	if(b.equals(BigInteger.ZERO))
+	private static ExecutorService es;
+	
+	public ModPower(BigInteger a, BigInteger b, BigInteger m)//base, exponent, mod by--the starting constructor--sets the dummy to one
 	{
-		return c;
+		this(a,b,m,BigInteger.ONE);
 	}
-	if (b.testBit(0))
+	public ModPower(BigInteger a, BigInteger b, BigInteger m, BigInteger c) //base,exponent,modby,dummy
 	{
-		c = c.multiply(a).mod(m);
+		this.a = a;
+		this.b = b;
+		this.m = m;
+		this.c = c;
 	}
-	else
+	// Allows the user to set what ExecutorService is being used. Different applications require different needs.
+	public static void setES(ExecutorService newES)
 	{
-		c = c;
+		es = newES;
 	}
-	b = b.shiftRight(1);
-	a = a.multiply(a).mod(m);
-	Callable<BigInteger> mp = new ModPower(a,b,m,c);
-	Future<BigInteger> f = es.submit(mp);
-	return f.get();
-
-}
-//This is to test the Power class to make sure that everything is running correctly 10^10 should have 10 zeros to it
-//accepts two string integers for calculation
+	
+	public BigInteger call() throws InterruptedException, ExecutionException
+	{
+		if(b.equals(BigInteger.ZERO))
+		{
+			return c;
+		}
+		if (b.testBit(0))
+		{
+			c = c.multiply(a).mod(m);
+		}
+		else
+		{
+			c = c;
+		}
+		b = b.shiftRight(1);
+		a = a.multiply(a).mod(m);
+		Callable<BigInteger> mp = new ModPower(a,b,m,c);
+		Future<BigInteger> f = es.submit(mp);
+		return f.get();
+	
+	}
+	//This is to test the modPower class to make sure that everything is running correctly
+	//accepts three string integers for calculation
+	//sample calculation is provided in readme
 	public static void main(String[] args) throws InterruptedException, ExecutionException
 	{
-		test(args);
-	}
-	public static void test(String[] args) throws InterruptedException, ExecutionException
-	{
-		BigInteger qwer = new BigInteger(args[0]);
-		BigInteger rewq = new BigInteger(args[1]);
-		BigInteger asdf = new BigInteger(args[2]);
+		BigInteger base = new BigInteger(args[0]);
+		BigInteger exponent = new BigInteger(args[1]);
+		BigInteger mod = new BigInteger(args[2]);
 		ModPower.setES(Executors.newCachedThreadPool());
-		Callable<BigInteger> p = new ModPower(qwer,rewq,asdf);
+		Callable<BigInteger> p = new ModPower(base,exponent,mod);
 		Future<BigInteger> f = es.submit(p);
 		System.out.println(f.get());
 		es.shutdown();
