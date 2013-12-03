@@ -175,10 +175,8 @@ public class Server implements Runnable
 		boolean done = true;
 		for( int i = 0 ; i < isDone.size() ; i++)
 		{
-			System.out.println(i + ":" + isDone.get(i).booleanValue());
 			done = done && isDone.get(i).booleanValue();
 		}
-		System.out.println("Total done: " + done);
 		return done;
 	}
 
@@ -241,7 +239,6 @@ public class Server implements Runnable
 			}
 			if ( isReadyForNext() && !send )
 			{
-				System.out.println("changing");
                                 checks_lock.lock();
                                 try
 	                        {
@@ -270,7 +267,6 @@ public class Server implements Runnable
 			
 			if ( isAllSent() )
 			{
-				System.out.println("All sent");
 				send = false;
 			}
                         try{
