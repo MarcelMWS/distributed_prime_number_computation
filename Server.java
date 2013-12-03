@@ -108,9 +108,11 @@ public class Server implements Runnable
 			System.out.println("Not the client you're looking for.");
 			return;
 		}
-		System.out.println("Connected to "+connSocket.getLocalAddress()+":"+connSocket.getLocalPort());
+		System.out.println("Connected to "+connSocket);
 		while( connected )
-		{
+		{	
+			if(!!isDone.get(socketSpot).booleanValue()||send)//if this client is done you don't need to wait to get stuff cause it shouldn't be sending anything
+			{
 			if(send&&!recieve)
                         {
 	                        checks_lock.lock();
@@ -156,6 +158,11 @@ public class Server implements Runnable
 					}
 				}
 			}
+			}
+			else
+			{
+				System.out.println(connSocket+" done and waiting");
+			}
 			try{
 			Thread.sleep(100);}
 			catch ( InterruptedException e ){
@@ -168,8 +175,10 @@ public class Server implements Runnable
 		boolean done = true;
 		for( int i = 0 ; i < isDone.size() ; i++)
 		{
+			System.out.println(i + ":" + isDone.get(i).booleanValue());
 			done = done && isDone.get(i).booleanValue();
 		}
+		System.out.println("Total done: " + done);
 		return done;
 	}
 
@@ -186,6 +195,18 @@ public class Server implements Runnable
 			sent  = sent && isDone.get(i).booleanValue();
 		}
 		return sent;
+	}
+	
+	public static void waitForAllSent()
+	{
+		while( !isAllSent() )
+		{
+                        try{
+                        Thread.sleep(100);}
+                        catch ( InterruptedException e ){
+                        System.out.println(e);}
+
+		}
 	}
 	
 	public static void main( String[] args )//First argument is starting number
@@ -220,6 +241,7 @@ public class Server implements Runnable
 			}
 			if ( isReadyForNext() && !send )
 			{
+				System.out.println("changing");
                                 checks_lock.lock();
                                 try
 	                        {
@@ -245,12 +267,14 @@ public class Server implements Runnable
 				num=num.add(BigInteger.ONE).add(BigInteger.ONE);
 				send = true;
 			}
-			if ( isAllSent() && send)
+			
+			if ( isAllSent() )
 			{
+				System.out.println("All sent");
 				send = false;
 			}
                         try{
-                        Thread.sleep(100);}
+                        Thread.sleep(10);}//the smaller the sleep time the faster the server will run and the less times there will be error in what gets sent over
                         catch ( InterruptedException e ){
                         System.out.println("A socket got interrupted");}
 
