@@ -66,6 +66,10 @@ public class Client
 	public static void main( String[] args )
 	{
 
+	// This first section before the main loop is the section where the client connects with the
+	// server and confirms that it is the server. The handshake used isn't complicated ( just 
+	// matching two strings ) but it is efficient to filter out most discrepencies
+
 	try
 	{
 		s = new Socket(args[0],Integer.parseInt(args[1]));
@@ -95,6 +99,8 @@ public class Client
 	}
 
 	System.out.println("Connected to:  " + s.getLocalAddress() + ":" + s.getLocalPort());
+
+	// Setup of initial conditions and variables. Always in the recieve state first
 	send=false;
 	recieve=true;
         Miller.setES(es);
@@ -102,9 +108,15 @@ public class Client
 	Future<Void> f;
 	while (true)
 	{
+		// Simple state machine to determine if it's recieving or sending
 		if(recieve)
 		{
 			BigInteger num = recieveNumber();
+			if ( num == null )
+			{
+				System.out.println("Connection lost exiting program");
+				return;
+			}
 			System.out.println("Number Recieved "+num);
 			m1= new Miller(num);
 			recieve=false;

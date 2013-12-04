@@ -66,7 +66,8 @@ public class ModPower implements Callable<BigInteger>
 		Callable<BigInteger> p = new ModPower(base,exponent,mod);
 		Future<BigInteger> f = es.submit(p);
 		System.out.println(f.get());
-		es.shutdown();
+		es.shutdownNow();
+		return;
 	}
 
 }

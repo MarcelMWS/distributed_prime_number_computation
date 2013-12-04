@@ -50,6 +50,11 @@ public class Miller implements Callable<Void>// the return will never be read by
 			n=q;
 		}
 	}
+
+	public BigInteger getNum()
+	{
+		return n;
+	}
 	
 	public void newCheck()
 	{

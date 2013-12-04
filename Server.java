@@ -9,20 +9,25 @@ import java.util.Scanner;
 
 public class Server implements Runnable
 {
-	private static BigInteger num;
-	private static ServerSocket server = null;
-	private static List<BigInteger> primes=new ArrayList<BigInteger>();
-	private static List<Boolean> isPrime=new ArrayList<Boolean>();
-	private static List<Boolean> isDone=new ArrayList<Boolean>();
-	private static List<Boolean> isSent=new ArrayList<Boolean>();
-	private static Lock checks_lock = new ReentrantLock();
-	private static boolean send;
-	private static int nextSpot=0;
+	private static BigInteger num; // the tested number
+	private BigInteger prevNum; // the previous tested number
+	private static ServerSocket server = null; // the socket that will find all incoming clients
+	private static List<BigInteger> primes=new ArrayList<BigInteger>(); // array of primes that is stored
+	private static List<Boolean> isPrime=new ArrayList<Boolean>(); // variable used to check to see what each computer thinks of a specific number (prime or not)
+	private static List<Boolean> isDone=new ArrayList<Boolean>();  // used to check if all clients are done computing
+	private static List<Boolean> isSent=new ArrayList<Boolean>();  // used to check if all clients have the number
+	private static List<Boolean> goodClients = new ArrayList<Boolean>(); // true if the client is still sending proper data--false if it's not
+	private static Lock checks_lock = new ReentrantLock(); //locks down isPrime isDone and isSent for writing
+	private static int numClients=0;
+	private static boolean send; // tells the threads if it should send to a client
+	private static int nextSpot=0; // the next number available in the arrays
 
 	private boolean recieve;
 	private boolean connected = true;
 	private Socket connSocket;
-	private int socketSpot;
+	private int socketSpot; // this thread's spot in the arrays
+	private int badAttempts=0; // counts the number of bad attempts for any given client before it's shutdown
+	private final int maxBadAttempts=3;
 	
 	private ObjectOutputStream out;
 	private ObjectInputStream in;
@@ -32,9 +37,40 @@ public class Server implements Runnable
 		connSocket = conn;
 		socketSpot=nextSpot;
 		nextSpot++;
-		isPrime.add(Boolean.FALSE);
-		isDone.add(Boolean.FALSE);
-		isSent.add(Boolean.FALSE);
+
+		checks_lock.lock();
+		try
+		{
+			isPrime.add(Boolean.FALSE);
+			isDone.add(Boolean.FALSE);
+			isSent.add(Boolean.FALSE);
+			goodClients.add(Boolean.TRUE); // indicates a client is good and doesn't need to be ignored
+			numClients++;
+		}
+		finally
+		{
+			checks_lock.unlock();
+		}
+	}
+
+
+	private static void setClientToBad(int c)// the spot to start shifting down
+	{
+		checks_lock.lock();
+		try
+		{
+			goodClients.set(c,Boolean.FALSE);
+			isDone.set(c,Boolean.TRUE); //these values are set to avoid any interference
+                        isPrime.set(c,Boolean.TRUE);//with the values from other threads if accidentally
+                        isSent.set(c,Boolean.TRUE); //accessed.
+			numClients--;
+
+		}
+		finally
+		{
+			checks_lock.unlock();
+		}
+		return;
 	}
 	public void sendNumber(BigInteger num)
 	{
@@ -67,7 +103,8 @@ public class Server implements Runnable
                 {
                         System.out.println("Bad Object Type");
                         System.out.println(e);
-                        return null;
+                        badAttempts++;
+			return null;
                 }
         }
         public boolean recieveAndCheckMessage(String equ)
@@ -80,6 +117,7 @@ public class Server implements Runnable
                 {
                         System.out.println("Bad Object Type");
                         System.out.println(e);
+			badAttempts++;
                         return false;
                 }
         }
@@ -111,9 +149,16 @@ public class Server implements Runnable
 		System.out.println("Connected to "+connSocket);
 		while( connected )
 		{	
-			if(!!isDone.get(socketSpot).booleanValue()||send)//if this client is done you don't need to wait to get stuff cause it shouldn't be sending anything
+			if(badAttempts>=maxBadAttempts)
 			{
-			if(send&&!recieve)
+				System.out.println(connSocket+" went bad. Ending connection");
+                                setClientToBad(socketSpot);
+				return; // ends the thread by exiting the void
+
+			}
+			if(!isDone.get(socketSpot).booleanValue()||send)//if this client is done you don't need to wait to get stuff cause it shouldn't be sending anything
+			{
+			if(!isSent.get(socketSpot).booleanValue()&&!num.equals(prevNum))//don't saturate the network with two or more of the same number
                         {
 	                        checks_lock.lock();
                                 try
@@ -121,13 +166,14 @@ public class Server implements Runnable
                 	                isDone.set(socketSpot,Boolean.FALSE);
                         	        isPrime.set(socketSpot,Boolean.FALSE);
 					isSent.set(socketSpot,Boolean.TRUE);
+					sendNumber(num);
+					prevNum=num.add(BigInteger.ZERO);
                                 }
                                 finally
                                 {
                  	               checks_lock.unlock();
                         	}
 
-				sendNumber(num);
 				//System.out.println("number sent to " + connSocket.getLocalAddress());
 				recieve=true;
 			}
@@ -142,6 +188,7 @@ public class Server implements Runnable
 				catch (Exception e)
 				{
 					System.out.println("Bad connection--retrying");
+					badAttempts++;
 				}
 				if(!recieve)
 				{
@@ -161,12 +208,13 @@ public class Server implements Runnable
 			}
 			else
 			{
-				System.out.println(connSocket+" done and waiting");
+				//System.out.println(connSocket+" done and waiting");
 			}
 			try{
 			Thread.sleep(100);}
 			catch ( InterruptedException e ){
-			System.out.println("A socket got interrupted");}
+			System.out.println("A socket got interrupted");
+			badAttempts++;}
 		}
 	}
 
@@ -174,28 +222,28 @@ public class Server implements Runnable
 	{
 		boolean done = true;
 		for( int i = 0 ; i < isDone.size() ; i++)
-		{
-			done = done && isDone.get(i).booleanValue();
+		{	if (goodClients.get(i).booleanValue()){
+				done = done && isDone.get(i).booleanValue();}
 		}
 		return done;
 	}
 
-	public static boolean isAllSent()
+	public static boolean isAllSent()//checks to see if the server sent out the data to all of the clients
 	{
 		if (isSent.size()==0)
 		{
-			System.out.println("No Clients Connected");
+			//System.out.println("No Clients Connected");
 			return false;
 		}
 		boolean sent = true;
 		for( int i = 0 ; i < isSent.size() ; i++)
-		{
-			sent  = sent && isDone.get(i).booleanValue();
+		{	if (goodClients.get(i).booleanValue()){
+				sent  = sent && isDone.get(i).booleanValue();}
 		}
 		return sent;
 	}
 	
-	public static void waitForAllSent()
+	public static void waitForAllSent()//simply waits for all of the data 
 	{
 		while( !isAllSent() )
 		{
@@ -210,7 +258,7 @@ public class Server implements Runnable
 	public static void main( String[] args )//First argument is starting number
 	{
 		num = new BigInteger(args[0]);
-		if (!num.testBit(0) )
+		if (!num.testBit(0) ) // avoids starting with an even number
 		{
 			num=num.add(BigInteger.ONE);
 		}
@@ -236,8 +284,9 @@ public class Server implements Runnable
 			catch ( Exception e )
 			{
 //				System.out.println("server timeout"); //can be ignored because it times out quite often
+			
 			}
-			if ( isReadyForNext() && !send )
+			if ( isReadyForNext() && !send && numClients>0)
 			{
                                 checks_lock.lock();
                                 try
@@ -245,23 +294,25 @@ public class Server implements Runnable
 					boolean isNumPrime = true;
 					for(int i = 0 ; i < isDone.size() ; i++)
 					{
-						isNumPrime = isNumPrime && isPrime.get(i).booleanValue();
-        	                        	isDone.set(i,Boolean.FALSE);
-                                        	isPrime.set(i,Boolean.FALSE);
-                                        	isSent.set(i,Boolean.FALSE);
+						if(goodClients.get(i).booleanValue())
+						{
+							isNumPrime = isNumPrime && isPrime.get(i).booleanValue();
+        	                        		isDone.set(i,Boolean.FALSE);
+                                        		isPrime.set(i,Boolean.FALSE);
+                                        		isSent.set(i,Boolean.FALSE);
+						}
 					}
 					if (isNumPrime)
 					{
-						primes.add(num);
+						primes.add(num); // adds to the list of prime numbers
 						System.out.println(num);
 					}
+					num=num.add(BigInteger.ONE).add(BigInteger.ONE); //adding two avoids evens cause they're not prime anyway
                                 }
                                 finally
                                 {
                   	              checks_lock.unlock();
                                 }
-
-				num=num.add(BigInteger.ONE).add(BigInteger.ONE);
 				send = true;
 			}
 			
@@ -272,7 +323,7 @@ public class Server implements Runnable
                         try{
                         Thread.sleep(10);}//the smaller the sleep time the faster the server will run and the less times there will be error in what gets sent over
                         catch ( InterruptedException e ){
-                        System.out.println("A socket got interrupted");}
+                        System.out.println("Main loop got interrupted");}
 
 		}
 	}
