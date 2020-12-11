@@ -41,9 +41,12 @@ To run the client
 
 build 
 
-docker build . -t prime:server
+docker build . -t prime:server (maybe: you need to change -t prime:server name to directory)
+
 #server
+
 docker-compose -f docker-compose-S.yml up --build
 
 #client
+
 docker-compose -f docker-compose.yml up --build
