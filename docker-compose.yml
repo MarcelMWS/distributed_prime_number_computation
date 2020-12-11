@@ -7,3 +7,14 @@ services:
       - .:/usr/src/client
     ports:
       - "33333:33333"
+    tty: true
+    networks:
+       localnet:
+          ipv4_address: 192.168.10.3
+networks:
+    localnet:
+        driver: bridge
+        ipam:
+          driver: default
+          config:
+          - subnet: 192.168.10.0/16

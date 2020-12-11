@@ -9,12 +9,14 @@ services:
       - 'start_range=0'
     ports:
      - "33333:33333"
+    tty: true
     networks:
-       testing_net:
-          ipv4_address: 172.28.1.2
+       localnet:
+          ipv4_address: 192.168.10.2
 networks:
-    testing_net:
+    localnet:
+        driver: bridge
         ipam:
-            driver: default
-            config:
-                - subnet: 172.28.0.0/16
+          driver: default
+          config:
+          - subnet: 192.168.10.0/16
