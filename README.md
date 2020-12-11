@@ -35,3 +35,15 @@ To run the server
 To run the client
 
   java Client server_ip_address server_port
+
+
+## docker 
+
+build 
+
+docker build . -t prime:server
+#server
+docker-compose -f docker-compose-S.yml up --build
+
+#client
+docker-compose -f docker-compose.yml up --build
