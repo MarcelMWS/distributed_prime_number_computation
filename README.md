@@ -39,14 +39,16 @@ To run the client
 
 ## docker 
 
-build 
+### start
 
-docker build . -t prime:server (maybe: you need to change -t prime:server name to directory)
+  `docker-compose up`
 
-#server
+  after changes run:
 
-docker-compose -f docker-compose-S.yml up --build
+  `docker-compose up --build`
 
-#client
+### stop
 
-docker-compose -f docker-compose.yml up --build
+  `docker-compose down`
+
+  Hint: If you run into errors: always stop with `docker-compose down` to remove network and to free ports

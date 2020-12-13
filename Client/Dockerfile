@@ -3,5 +3,4 @@ COPY . /usr/src/client
 WORKDIR /usr/src/client
 EXPOSE 33333
 RUN javac -classpath . Client.java
-RUN java Client 192.168.10.2 33333
-#CMD ["java", "Main"]
+CMD java Client 192.168.10.3 33333
